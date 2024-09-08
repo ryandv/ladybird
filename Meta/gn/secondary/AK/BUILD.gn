@@ -281,6 +281,7 @@ write_cmake_config("ak_debug_gen") {
     "WEBDRIVER_ROUTE_DEBUG=",
     "WEBGL_CONTEXT_DEBUG=",
     "WEB_FETCH_DEBUG=",
+    "WEB_FILE_NAV_DEBUG=",
     "WEB_WORKER_DEBUG=",
     "WEBP_DEBUG=",
     "WORKER_THREAD_DEBUG=",

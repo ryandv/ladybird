@@ -835,6 +835,11 @@ static WebIDL::ExceptionOr<Navigable::NavigationParamsVariant> create_navigation
                 response_holder->set_response(fetch_response);
             };
 
+            if (request->origin().has<HTML::Origin>()) {
+                dbgln_if(WEB_FILE_NAV_DEBUG, "Navigable: In 'create_navigation_params_by_fetching' step 5 and about to fetch with request HTML origin scheme = {}", request->origin().get<HTML::Origin>().scheme());
+            } else if (request->origin().has<Web::Fetch::Infrastructure::Request::Origin>()) {
+                dbgln_if(WEB_FILE_NAV_DEBUG, "Navigable: In 'create_navigation_params_by_fetching' step 5 and about to fetch with request Client origin");
+            }
             fetch_controller = TRY(Fetch::Fetching::fetch(
                 realm,
                 request,
@@ -880,6 +885,11 @@ static WebIDL::ExceptionOr<Navigable::NavigationParamsVariant> create_navigation
 
         // 11. Set responseOrigin to the result of determining the origin given response's URL, finalSandboxFlags, and entry's document state's initiator origin.
         response_origin = determine_the_origin(*response_holder->response()->url(), final_sandbox_flags, entry->document_state()->initiator_origin());
+        if (request->origin().has<HTML::Origin>() && response_origin->host().has<String>()) {
+            dbgln_if(WEB_FILE_NAV_DEBUG, "Navigable: In 'create_navigation_params_by_fetching' step 11 with HTML response_origin.scheme = {}, .host = {}", response_origin->scheme(), response_origin->host().get<String>());
+        } else {
+            dbgln_if(WEB_FILE_NAV_DEBUG, "Navigable: In 'create_navigation_params_by_fetching' step 11 with Client response_origin");
+        }
 
         // 12. If navigable is a top-level traversable, then:
         if (navigable->is_top_level_traversable()) {
@@ -1030,6 +1040,9 @@ static WebIDL::ExceptionOr<Navigable::NavigationParamsVariant> create_navigation
     navigation_params->final_sandboxing_flag_set = final_sandbox_flags;
     navigation_params->cross_origin_opener_policy = response_coop;
     navigation_params->about_base_url = entry->document_state()->about_base_url();
+    if (response_origin->host().has<String>()) {
+        dbgln_if(WEB_FILE_NAV_DEBUG, "Navigable: Returning from 'create_navigation_params_by_fetching' with: response_origin.scheme = {}, .host = {}", response_origin->scheme(), response_origin->host().get<String>());
+    }
     return navigation_params;
 }
 
@@ -1443,6 +1456,11 @@ WebIDL::ExceptionOr<void> Navigable::navigate(NavigateParams params)
         //     for historyEntry, given navigable, "navigate", sourceSnapshotParams,
         //     targetSnapshotParams, navigationId, navigationParams, cspNavigationType, with allowPOST
         //     set to true and completionSteps set to the following step:
+        if (navigation_params.has<JS::NonnullGCPtr<NavigationParams>>()) {
+            dbgln_if(WEB_FETCH_DEBUG, "Navigable: Running 'navigate' with: navigation_params scheme = {}, host = {}", navigation_params.get<JS::NonnullGCPtr<NavigationParams>>()->origin.scheme(), navigation_params.get<JS::NonnullGCPtr<NavigationParams>>()->origin.host().get<String>());
+        } else {
+            dbgln_if(WEB_FETCH_DEBUG, "Navigable: Running 'navigate' with null navigation_params");
+        }
         populate_session_history_entry_document(history_entry, source_snapshot_params, target_snapshot_params, navigation_id, navigation_params, csp_navigation_type, true, JS::create_heap_function(heap(), [this, history_entry, history_handling, navigation_id] {
             // 1.     Append session history traversal steps to navigable's traversable to finalize a cross-document navigation given navigable, historyHandling, and historyEntry.
             traversable_navigable()->append_session_history_traversal_steps(JS::create_heap_function(heap(), [this, history_entry, history_handling, navigation_id] {

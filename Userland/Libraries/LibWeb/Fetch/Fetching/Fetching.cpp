@@ -74,7 +74,11 @@ bool g_http_cache_enabled;
 // https://fetch.spec.whatwg.org/#concept-fetch
 WebIDL::ExceptionOr<JS::NonnullGCPtr<Infrastructure::FetchController>> fetch(JS::Realm& realm, Infrastructure::Request& request, Infrastructure::FetchAlgorithms const& algorithms, UseParallelQueue use_parallel_queue)
 {
-    dbgln_if(WEB_FETCH_DEBUG, "Fetch: Running 'fetch' with: request @ {}", &request);
+    if (request.origin().has<HTML::Origin>()) {
+        dbgln_if(WEB_FILE_NAV_DEBUG, "Fetch: Calling 'fetch' with: request HTML origin = {}", request.origin().get<HTML::Origin>().scheme());
+    } else if (request.origin().has<Web::Fetch::Infrastructure::Request::Origin>()) {
+        dbgln_if(WEB_FILE_NAV_DEBUG, "Fetch: Calling 'fetch' with: request Client origin");
+    }
 
     auto& vm = realm.vm();
 
@@ -138,6 +142,13 @@ WebIDL::ExceptionOr<JS::NonnullGCPtr<Infrastructure::FetchController>> fetch(JS:
     auto const* origin = request.origin().get_pointer<Infrastructure::Request::Origin>();
     if (origin && *origin == Infrastructure::Request::Origin::Client)
         request.set_origin(request.client()->origin());
+
+    auto fetch_params_request_client_origin = fetch_params->request();
+    if (fetch_params_request_client_origin->origin().has<HTML::Origin>()) {
+        dbgln_if(WEB_FILE_NAV_DEBUG, "Fetch: In 'fetch' step 10 with: fetch_params_request_client_origin HTML origin scheme = {}", fetch_params_request_client_origin->origin().get<HTML::Origin>().scheme());
+    } else if (fetch_params_request_client_origin->origin().has<Web::Fetch::Infrastructure::Request::Origin>()) {
+        dbgln_if(WEB_FILE_NAV_DEBUG, "Fetch: In 'fetch' step 10 with: fetch_params_request_client_origin Client origin");
+    }
 
     // 11. If all of the following conditions are true:
     if (
@@ -256,6 +267,13 @@ WebIDL::ExceptionOr<JS::NonnullGCPtr<Infrastructure::FetchController>> fetch(JS:
         request.client()->fetch_group().append(record);
     }
 
+    auto fetch_params_request = fetch_params->request();
+    if (fetch_params_request->origin().has<HTML::Origin>()) {
+        dbgln_if(WEB_FILE_NAV_DEBUG, "Fetch: In 'fetch' step 16 with: fetch_params_request HTML origin scheme = {}", fetch_params_request->origin().get<HTML::Origin>().scheme());
+    } else if (fetch_params_request->origin().has<Web::Fetch::Infrastructure::Request::Origin>()) {
+        dbgln_if(WEB_FILE_NAV_DEBUG, "Fetch: In 'fetch' step 16 with: fetch_params_request Client origin");
+    }
+
     // 17. Run main fetch given fetchParams.
     (void)TRY(main_fetch(realm, fetch_params));
 
@@ -272,6 +290,11 @@ WebIDL::ExceptionOr<JS::GCPtr<PendingResponse>> main_fetch(JS::Realm& realm, Inf
 
     // 1. Let request be fetchParams’s request.
     auto request = fetch_params.request();
+    if (request->origin().has<HTML::Origin>()) {
+        dbgln_if(WEB_FILE_NAV_DEBUG, "Fetch: In 'main fetch' step 1 with: request HTML origin scheme = {}", request->origin().get<HTML::Origin>().scheme());
+    } else if (request->origin().has<Web::Fetch::Infrastructure::Request::Origin>()) {
+        dbgln_if(WEB_FILE_NAV_DEBUG, "Fetch: In 'main fetch' step 1 with: request Client origin");
+    }
 
     // 2. Let response be null.
     JS::GCPtr<Infrastructure::Response> response;
